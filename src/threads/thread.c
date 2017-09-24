@@ -162,11 +162,19 @@ thread_print_stats (void)
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
+
+bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *aux){
+    //
+    struct thread *t1 = list_entry(e1, struct thread, elem);
+    struct thread *t2 = list_entry(e2, struct thread, elem);
+    return (t1->priority > t2->priority);
+}
+
 tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  struct thread *t;
+  struct thread *t, *ct;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
@@ -208,7 +216,10 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-
+  ct = thread_current ();
+  if(ct->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+        thread_yield ();
+  }
   return tid;
 }
 
@@ -245,7 +256,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, compare_thread_priority, 0);
+//  list_push_back (&ready_list, &t->elem);
+//  this is original code
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -316,7 +329,9 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, compare_thread_priority, 0);
+    // original code
+    // list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -344,6 +359,13 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  if(list_empty (&ready_list))
+      return;
+
+  if(new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+        thread_yield ();
+  }
+
 }
 
 /* Returns the current thread's priority. */

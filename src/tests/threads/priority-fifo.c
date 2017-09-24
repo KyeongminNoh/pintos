@@ -44,6 +44,7 @@ test_priority_fifo (void)
 
   msg ("%d threads will iterate %d times in the same order each time.",
        THREAD_CNT, ITER_CNT);
+
   msg ("If the order varies then there is a bug.");
 
   output = op = malloc (sizeof *output * THREAD_CNT * ITER_CNT * 2);

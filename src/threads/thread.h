@@ -114,6 +114,7 @@ void thread_tick (void);
 void thread_print_stats (void);
 
 typedef void thread_func (void *aux);
+bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
 void thread_block (void);
