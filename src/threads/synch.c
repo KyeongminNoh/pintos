@@ -289,6 +289,10 @@ void priority_return (struct thread *t, struct lock *lock)
 {
     struct thread *donator = list_entry(list_pop_front(&t->donators), struct thread, donelem);
     int temp = donator->priority;
+    if(t->is_donating){
+        priority_return (t->receiver, t->wait_lock);
+    }
+
     if(donator->priority_after > -1) {
         donator->priority = donator->priority_after;
         donator->priority_after = -1;
@@ -311,10 +315,8 @@ void priority_return (struct thread *t, struct lock *lock)
 void priority_donation (struct thread *donator, struct thread *receiver, struct lock *lock)
 {
     int temp = donator->priority;
-    bool nested = false;
     struct thread *nested_receiver = NULL;
     if(receiver->is_donating){
-        nested = true;
         nested_receiver = receiver->receiver;
         priority_return (nested_receiver, receiver->wait_lock);
     }
@@ -327,8 +329,8 @@ void priority_donation (struct thread *donator, struct thread *receiver, struct 
     receiver->donated_level ++;
     donator->wait_lock = lock;
     list_insert_ordered(&receiver->donators, &donator->donelem, compare_priority, 0);
-    if(nested){
-        return priority_donation (receiver, nested_receiver, receiver->wait_lock);
+    if(receiver->is_donating == 0 && receiver->wait_lock != NULL){
+        return priority_donation (receiver, receiver->wait_lock->holder, receiver->wait_lock);
     }
     return;
 }
