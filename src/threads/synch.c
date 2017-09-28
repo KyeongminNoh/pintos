@@ -115,6 +115,7 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)){
+      list_sort (&sema->waiters, compare_thread_priority, 0);
       thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
       ready_list_sort();
@@ -288,8 +289,19 @@ void priority_return (struct thread *t, struct lock *lock)
 {
     struct thread *donator = list_entry(list_pop_front(&t->donators), struct thread, donelem);
     int temp = donator->priority;
-    donator->priority = t->priority;
-    t->priority = temp;
+    if(donator->priority_after > -1) {
+        donator->priority = donator->priority_after;
+        donator->priority_after = -1;
+    } else {
+        donator->priority = t->priority;
+    }
+
+    if(t->priority_after > -1) {
+        t->priority = t->priority_after;
+        t->priority_after = -1;
+    } else {
+        t->priority = temp;
+    }
     donator->is_donating = false;
     donator->receiver = NULL;
     t->donated_level --;
