@@ -176,8 +176,21 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  if(get_next_tick() <= ticks)//is time to awake?
-    thread_goto_ready(ticks);
+  if(thread_mlfqs)
+  {
+    mlfqs_inc();
+    
+    if(ticks % TIMER_FREQ == 0)
+    {
+        mlfqs_load_avg_change();
+        mlfqs_all_change();
+    }
+    if(ticks % 4 == 0)
+        mlfqs_priority_change(thread_current());
+  }
+
+  if(get_next_tick() <= ticks)
+      thread_goto_ready(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

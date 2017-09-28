@@ -23,6 +23,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define FP 1<<14
 
 /* A kernel thread or user process.
 
@@ -89,7 +90,14 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     int waketime;                       /*save the wakeup timming*/
+    int nice; 
+    int recent_cpu;
     struct list_elem allelem;           /* List element for all threads list. */
+
+    struct thread *parent;
+    struct list_elem child_elem;
+    struct list child_list;
+    bool load_success;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -122,7 +130,12 @@ void next_wakeup_compare(int);
 int get_next_tick(void);
 void thread_goto_sleep(int);
 void thread_goto_ready(int);
-
+void mlfqs_priority_change(struct thread *t);
+void mlfqs_recent_cpu_change(struct thread *t);
+void mlfqs_load_avg_change(void);
+void mlfqs_inc(void);
+void mlfqs_all_change(void);
+void test_max_priority(void);
 
 void thread_init (void);
 void thread_start (void);
