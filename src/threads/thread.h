@@ -115,6 +115,7 @@ struct thread
 
     int origin_priority;                /* Prirority before priority donation */
     int donated_level;
+    int priority_after;
     bool is_donating;
     struct list donators;
     struct thread *receiver;

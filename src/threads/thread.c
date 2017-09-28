@@ -447,11 +447,17 @@ thread_set_priority (int new_priority)
 {
     if(!thread_mlfqs)
     {
-    thread_current ()->priority = new_priority;
-    if(list_empty (&ready_list))
-      return;
+        struct thread *ct = thread_current ();
+        if (ct->donated_level || ct->is_donating){
+            ct->priority_after = new_priority;
+            return;
+        } else {
+            thread_current ()->priority = new_priority;
+            if(list_empty (&ready_list))
+                return;
 
-    priority_yield ();
+            priority_yield ();
+        } 
     }
 }
 
@@ -638,6 +644,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
   t->receiver = NULL;
   t->wait_lock = NULL;
+  t->priority_after = -1;
   list_init (&t->donators);
   list_push_back (&all_list, &t->allelem);
 

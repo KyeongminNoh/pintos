@@ -115,6 +115,7 @@ sema_up (struct semaphore *sema)
 
   old_level = intr_disable ();
   if (!list_empty (&sema->waiters)){
+      list_sort (&sema->waiters, compare_thread_priority, 0);
       thread_unblock (list_entry (list_pop_front (&sema->waiters),
                                 struct thread, elem));
       ready_list_sort();
@@ -288,8 +289,23 @@ void priority_return (struct thread *t, struct lock *lock)
 {
     struct thread *donator = list_entry(list_pop_front(&t->donators), struct thread, donelem);
     int temp = donator->priority;
-    donator->priority = t->priority;
-    t->priority = temp;
+    if(t->is_donating){
+        priority_return (t->receiver, t->wait_lock);
+    }
+
+    if(donator->priority_after > -1) {
+        donator->priority = donator->priority_after;
+        donator->priority_after = -1;
+    } else {
+        donator->priority = t->priority;
+    }
+
+    if(t->priority_after > -1) {
+        t->priority = t->priority_after;
+        t->priority_after = -1;
+    } else {
+        t->priority = temp;
+    }
     donator->is_donating = false;
     donator->receiver = NULL;
     t->donated_level --;
@@ -299,10 +315,8 @@ void priority_return (struct thread *t, struct lock *lock)
 void priority_donation (struct thread *donator, struct thread *receiver, struct lock *lock)
 {
     int temp = donator->priority;
-    bool nested = false;
     struct thread *nested_receiver = NULL;
     if(receiver->is_donating){
-        nested = true;
         nested_receiver = receiver->receiver;
         priority_return (nested_receiver, receiver->wait_lock);
     }
@@ -315,8 +329,8 @@ void priority_donation (struct thread *donator, struct thread *receiver, struct 
     receiver->donated_level ++;
     donator->wait_lock = lock;
     list_insert_ordered(&receiver->donators, &donator->donelem, compare_priority, 0);
-    if(nested){
-        return priority_donation (receiver, nested_receiver, receiver->wait_lock);
+    if(receiver->is_donating == 0 && receiver->wait_lock != NULL){
+        return priority_donation (receiver, receiver->wait_lock->holder, receiver->wait_lock);
     }
     return;
 }
@@ -326,6 +340,7 @@ struct semaphore_elem
   {
     struct list_elem elem;              /* List element. */
     struct semaphore semaphore;         /* This semaphore. */
+    int priority;
   };
 
 /* Initializes condition variable COND.  A condition variable
@@ -337,6 +352,15 @@ cond_init (struct condition *cond)
   ASSERT (cond != NULL);
 
   list_init (&cond->waiters);
+}
+
+bool compare_cond_priority(const struct list_elem *e1, const struct list_elem *e2, void *aux UNUSED){
+    struct semaphore_elem *s1, *s2;
+
+    s1 = list_entry (e1, struct semaphore_elem, elem);
+    s2 = list_entry (e2, struct semaphore_elem, elem);
+
+    return (s1->priority > s2->priority);
 }
 
 /* Atomically releases LOCK and waits for COND to be signaled by
@@ -369,8 +393,9 @@ cond_wait (struct condition *cond, struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (lock_held_by_current_thread (lock));
   
+  waiter.priority = thread_current ()->priority;
   sema_init (&waiter.semaphore, 0);
-  list_push_back (&cond->waiters, &waiter.elem);
+  list_insert_ordered (&cond->waiters, &waiter.elem, compare_cond_priority, 0 );
   lock_release (lock);
   sema_down (&waiter.semaphore);
   lock_acquire (lock);
@@ -411,3 +436,6 @@ cond_broadcast (struct condition *cond, struct lock *lock)
   while (!list_empty (&cond->waiters))
     cond_signal (cond, lock);
 }
+
+
+
