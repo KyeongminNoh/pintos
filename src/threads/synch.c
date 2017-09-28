@@ -202,9 +202,11 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
-  if((lock->holder != NULL)&&(lock->holder->priority < thread_current ()->priority)){
+  if(!thread_mlfqs){
+    if((lock->holder != NULL)&&(lock->holder->priority < thread_current ()->priority)){
         
-        priority_donation(thread_current (), lock->holder, lock);
+            priority_donation(thread_current (), lock->holder, lock);
+    }
   }
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
@@ -249,17 +251,18 @@ lock_release (struct lock *lock)
   ct = thread_current ();
   
 
-   
-  for (e = list_begin (&ct->donators); e != list_end (&ct->donators); e = list_next(e)) {
-      dt = list_entry (list_front(&ct->donators) , struct thread, donelem);
-      if(dt->wait_lock == lock ) {
-          priority_return (ct, lock);
-          continue;
-      } else if(dt->wait_lock->holder == NULL) {
-          priority_return (ct, lock);
-          continue;
-      } else {
-          break;
+  if(!thread_mlfqs){ 
+      for (e = list_begin (&ct->donators); e != list_end (&ct->donators); e = list_next(e)) {
+          dt = list_entry (list_front(&ct->donators) , struct thread, donelem);
+          if(dt->wait_lock == lock ) {
+              priority_return (ct, lock);
+              continue;
+          } else if(dt->wait_lock->holder == NULL) {
+              priority_return (ct, lock);
+              continue;
+          } else {
+              break;
+          }
       }
   }
 
