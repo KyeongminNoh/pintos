@@ -103,7 +103,14 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
 
     /* Writed by User */
+    struct list_elem donelem;
+
     int origin_priority;                /* Prirority before priority donation */
+    int donated_level;
+    bool is_donating;
+    struct list donators;
+    struct thread *receiver;
+    struct lock *wait_lock;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -137,7 +144,11 @@ void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
 /* function for solving project 1 */
-bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *);
+bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *UNUSED);
+void priority_yield(void);
+struct thread *insert_donators(struct thread *t);
+struct thread *pop_donators();
+void ready_list_sort(void);
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);

@@ -22,7 +22,6 @@ void
 test_priority_donate_one (void) 
 {
   struct lock lock;
-
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
 
@@ -46,7 +45,6 @@ static void
 acquire1_thread_func (void *lock_) 
 {
   struct lock *lock = lock_;
-
   lock_acquire (lock);
   msg ("acquire1: got the lock");
   lock_release (lock);

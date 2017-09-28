@@ -215,19 +215,14 @@ thread_print_stats (void)
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 
-bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *aux){
-    //
-    struct thread *t1 = list_entry(e1, struct thread, elem);
-    struct thread *t2 = list_entry(e2, struct thread, elem);
-    return (t1->priority > t2->priority);
-}
+
 
 
 tid_t
 thread_create (const char *name, int priority,
                thread_func *function, void *aux) 
 {
-  struct thread *t, *ct;
+  struct thread *t;
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
@@ -269,10 +264,7 @@ thread_create (const char *name, int priority,
 
   /* add to run queue. */
   thread_unblock (t);
-  ct = thread_current ();
-  if(ct->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
-        thread_yield ();
-  }
+  priority_yield ();
   return tid;
 }
 
@@ -392,6 +384,41 @@ thread_yield (void)
   intr_set_level (old_level);
 }
 
+
+/* function for solving project 1 */
+bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *aux UNUSED){
+    //
+    struct thread *t1 = list_entry(e1, struct thread, elem);
+    struct thread *t2 = list_entry(e2, struct thread, elem);
+    return (t1->priority > t2->priority);
+}
+
+
+void priority_yield(void){
+    struct thread *ct = thread_current();
+
+    if(list_empty (&ready_list)){
+        return;
+    }
+
+    if(ct->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+        thread_yield ();
+    }
+
+};
+
+struct thread *insert_donators(struct thread *t){
+    list_insert_ordered(&thread_current ()->donators, &t->elem, compare_thread_priority, 0);
+}
+
+struct thread *pop_donators() {
+    return list_pop_front (&thread_current()->donators);
+}
+
+void ready_list_sort(void) {
+    list_sort(&ready_list, compare_thread_priority, 0);
+}
+
 /* Invoke function 'func' on all threads, passing along 'aux'.
    This function must be called with interrupts off. */
 void
@@ -417,9 +444,7 @@ thread_set_priority (int new_priority)
   if(list_empty (&ready_list))
       return;
 
-  if(new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
-        thread_yield ();
-  }
+  priority_yield ();
 
 }
 
@@ -544,7 +569,12 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->origin_priority = priority;
+  t->donated_level = 0;
+  t->is_donating = false;
   t->magic = THREAD_MAGIC;
+  t->receiver = NULL;
+  t->wait_lock = NULL;
+  list_init (&t->donators);
   list_push_back (&all_list, &t->allelem);
 }
 

@@ -31,6 +31,8 @@ void lock_release (struct lock *);
 bool lock_held_by_current_thread (const struct lock *);
 
 /* function for solving project1 */
+bool compare_priority(struct list_elem *e1, struct list_elem *e2, void *aux);
+void priority_return (struct thread *t, struct lock *lock);
 void priority_donation(struct thread *t1, struct thread *t2, struct lock *lock);
 
 /* Condition variable. */
