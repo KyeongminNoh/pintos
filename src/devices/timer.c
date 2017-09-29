@@ -7,7 +7,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-  
+#include "threads/float.h"
+
 /* See [8254] for hardware details of the 8254 timer chip. */
 // commit test
 
@@ -178,8 +179,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if(thread_mlfqs)
   {
-    mlfqs_inc(thread_current());
-    
+   
+    thread_current()->recent_cpu = ADD_INT (thread_current()->recent_cpu, 1);
+
+
     if(ticks % TIMER_FREQ == 0)
     {
         mlfqs_load_avg_change();
