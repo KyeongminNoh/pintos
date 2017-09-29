@@ -559,7 +559,7 @@ void test_max_priority(void)
 void maxpriority_check()
 {
     int temp_pri =thread_current()->priority;
-    struct thread *t = list_entry(list_front(&ready_list),struct thread, elem);
+    struct thread *t;
     int ready_pri =t->priority;
               
     if ( list_empty(&ready_list) ){ 
@@ -567,6 +567,9 @@ void maxpriority_check()
         return;
         }//if empty didn't anything
                     
+
+    t = list_entry(list_front(&ready_list),struct thread,elem);
+
     if (intr_context())
       {
       thread_ticks++;
@@ -593,7 +596,10 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  return fp_to_int_round(mult_mixed(load_avg, 100));
+    enum intr_level old_level = intr_disable();
+    int i = (mult_mixed(load_avg, 100)) * (1<<14);
+    intr_set_level(old_level);
+    return i;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -700,6 +706,7 @@ init_thread (struct thread *t, const char *name, int priority)
     list_init(&t->child_list);
     t->nice = 0;
     t->recent_cpu = 0;
+    mlfqs_priority_change(t);
   }
 }
 

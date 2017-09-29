@@ -187,6 +187,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
     }
     if(ticks % 4 == 0)
         mlfqs_priority_change(thread_current());
+  
+    maxpriority_check();
   }
 
   if(get_next_tick() <= ticks)
