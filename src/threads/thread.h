@@ -137,6 +137,7 @@ void mlfqs_load_avg_change(void);
 void mlfqs_inc(void);
 void mlfqs_all_change(void);
 void test_max_priority(void);
+void maxpriority_check(void);
 
 void thread_init (void);
 void thread_start (void);
