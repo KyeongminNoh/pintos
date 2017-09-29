@@ -477,13 +477,13 @@ void
 thread_set_nice (int nice) 
 {
 
-    if(thread_mlfqs)
+    if(!thread_mlfqs)
         return;
 
   struct thread *cur = thread_current();
   cur -> nice = nice;
   mlfqs_priority_change(cur);
-  //maxpriority_check();
+  maxpriority_check();
 }
 void mlfqs_priority_change(struct thread *t)
 {
