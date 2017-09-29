@@ -178,17 +178,17 @@ timer_interrupt (struct intr_frame *args UNUSED)
 
   if(thread_mlfqs)
   {
-    mlfqs_inc();
+    mlfqs_inc(thread_current());
     
     if(ticks % TIMER_FREQ == 0)
     {
         mlfqs_load_avg_change();
-        mlfqs_all_change();
+        mlfqs_all_recent_cpu_change();
     }
-    if(ticks % 4 == 0)
-        mlfqs_priority_change(thread_current());
+    if(ticks % 4 == 0) {
+        mlfqs_all_priority_change();
+    }
   
-    maxpriority_check();
   }
 
   if(get_next_tick() <= ticks)

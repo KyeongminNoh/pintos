@@ -134,8 +134,9 @@ void thread_goto_ready(int);
 void mlfqs_priority_change(struct thread *t);
 void mlfqs_recent_cpu_change(struct thread *t);
 void mlfqs_load_avg_change(void);
-void mlfqs_inc(void);
-void mlfqs_all_change(void);
+void mlfqs_inc(struct thread *t);
+void mlfqs_all_recent_cpu_change(void);
+void mlfqs_all_priority_change(void);
 void test_max_priority(void);
 void maxpriority_check(void);
 
