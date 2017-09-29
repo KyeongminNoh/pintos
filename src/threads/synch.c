@@ -247,22 +247,8 @@ lock_release (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
     
-
   ct = thread_current ();
   
-
-   
-  //list_sort(&ct->donators, compare_thread_priority, 0);
-  /*for (e = list_begin (&ct->donators); e != list_end (&ct->donators); e = list_next(e)) {
-      dt = list_entry (list_front(&ct->donators) , struct thread, donelem);
-      if(dt->wait_lock == lock ) {
-          priority_return (ct, lock);
-          continue;
-      } else if(dt->wait_lock->holder == NULL) {
-          priority_return (ct, lock);
-          continue;
-      } else {
-          break;*/
   if(!thread_mlfqs){ 
       for (e = list_begin (&ct->donators); e != list_end (&ct->donators); e = list_next(e)) {
           dt = list_entry (list_front(&ct->donators) , struct thread, donelem);
@@ -293,13 +279,7 @@ lock_held_by_current_thread (const struct lock *lock)
   return lock->holder == thread_current ();
 }
 
-/* function for solving project 1 */
-bool compare_priority(struct list_elem *e1, struct list_elem *e2, void *aux){
-    //
-    struct thread *t1 = list_entry(e1, struct thread, elem);
-    struct thread *t2 = list_entry(e2, struct thread, elem);
-    return (t1->priority < t2->priority);
-}
+/***** custom function for solving project 1 *****/
 void priority_return (struct thread *t, struct lock *lock)
 {
     struct thread *donator = list_entry(list_pop_front(&t->donators), struct thread, donelem);
@@ -350,6 +330,9 @@ void priority_donation (struct thread *donator, struct thread *receiver, struct 
     }
     return;
 }
+
+/*---------------------------------------*/
+
 
 /* One semaphore in a list. */
 struct semaphore_elem 

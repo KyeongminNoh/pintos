@@ -127,19 +127,6 @@ struct thread
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 
-void next_wakeup_compare(int);
-int get_next_tick(void);
-void thread_goto_sleep(int);
-void thread_goto_ready(int);
-void mlfqs_priority_change(struct thread *t);
-void mlfqs_recent_cpu_change(struct thread *t);
-void mlfqs_load_avg_change(void);
-void mlfqs_inc(struct thread *t);
-void mlfqs_all_recent_cpu_change(void);
-void mlfqs_all_priority_change(void);
-void test_max_priority(void);
-void maxpriority_check(void);
-
 void thread_init (void);
 void thread_start (void);
 
@@ -159,12 +146,29 @@ const char *thread_name (void);
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
 
-/* function for solving project 1 */
+/***** custom function for solving project 1 *****/
+
+/* function for alarm clock */
+void next_wakeup_compare(int);
+int get_next_tick(void);
+void thread_goto_sleep(int);
+void thread_goto_ready(int);
+
+/* function for priority scheduling */
 bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *UNUSED);
 void priority_yield(void);
-struct thread *insert_donators(struct thread *t);
-struct thread *pop_donators();
 void ready_list_sort(void);
+
+/* function for advanced scheduling */
+void mlfqs_priority_change(struct thread *t);
+void mlfqs_all_priority_change(void);
+void mlfqs_recent_cpu_change(struct thread *t);
+void mlfqs_all_recent_cpu_change(void);
+void mlfqs_load_avg_change(void);
+void test_max_priority(void);
+void maxpriority_check(void);
+
+/*---------------------------------------*/
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
