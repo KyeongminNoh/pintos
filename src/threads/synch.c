@@ -250,6 +250,7 @@ lock_release (struct lock *lock)
   
 
    
+  //list_sort(&ct->donators, compare_thread_priority, 0);
   for (e = list_begin (&ct->donators); e != list_end (&ct->donators); e = list_next(e)) {
       dt = list_entry (list_front(&ct->donators) , struct thread, donelem);
       if(dt->wait_lock == lock ) {
@@ -328,7 +329,8 @@ void priority_donation (struct thread *donator, struct thread *receiver, struct 
     donator->receiver = receiver;
     receiver->donated_level ++;
     donator->wait_lock = lock;
-    list_insert_ordered(&receiver->donators, &donator->donelem, compare_priority, 0);
+    list_push_front(&receiver->donators, &donator->donelem);
+    list_sort(&receiver->donators, compare_thread_priority, 0);
     if(receiver->is_donating == 0 && receiver->wait_lock != NULL){
         return priority_donation (receiver, receiver->wait_lock->holder, receiver->wait_lock);
     }

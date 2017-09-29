@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/float.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -24,8 +25,8 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 static struct list sleep_list;//add sleep_list
-static int next_tick_to_awake = 1000000000;//save next time at wake up
-int load_avg;
+static int next_tick_to_awake = 0;//save next time at wake up
+static int load_avg;
 
 void next_wakeup_compare(int ticks)
 {
@@ -648,12 +649,12 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init (&t->donators);
   list_push_back (&all_list, &t->allelem);
 
-  if(thread_mlfqs)
-  {
+ // if(thread_mlfqs)
+  //{
     list_init(&t->child_list);
     t->nice = 0;
     t->recent_cpu = 0;
-  }
+  //}
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
