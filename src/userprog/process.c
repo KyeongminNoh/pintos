@@ -28,7 +28,7 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char *fn_copy, *arg;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -38,6 +38,7 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  file_name = strtok_r(file_name, " ", &arg);
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -51,8 +52,35 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  char *token;
+  char *remain;
+  char *argv[128];
+  void *addr[128];
+  void *esp;
+  int length = 0;
+  int iter = 1;
+  int argc = 0;
+  
   struct intr_frame if_;
   bool success;
+
+  printf("cmdline: %s\n", file_name);
+
+  file_name = strtok_r(file_name, " ", &remain);
+
+  if(file_name != NULL){
+    argv[0] = file_name;
+    argc++;
+    printf("%s executed\n", argv[0]);
+  }
+  
+  for(token = strtok_r(NULL, " ", &remain); token != NULL; iter++){
+    argv[iter] = token;
+    argc++;
+    token = strtok_r(NULL, " ", &remain);
+  }
+
+  printf("argc %d\n", argc);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -60,6 +88,46 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
+
+  esp = if_.esp;
+
+  /* Pushing Argument to Stack */
+  for(iter = argc-1; iter >= 0; iter--){
+    length = strlen(argv[iter]) + 1;
+    esp = esp - length;
+    memcpy ( (void *)esp, argv[iter], length);
+    addr[iter] = esp;
+    printf("addr%d : %X esp: %X\n", iter, (int)(addr[iter]), (int)(esp));
+  }
+
+  esp = (void *)((unsigned int)esp - (unsigned int)esp % 4);
+
+
+  esp = esp - 4;
+  *(uint32_t*)esp = 0;
+  
+  for(iter = argc-1; iter >= 0; iter--){
+    esp = esp - 4;
+    printf("addr: %X\n", addr[iter]);
+    *(void **)esp = addr[iter];
+  }
+
+  esp = esp - 4;
+  *(void **)esp = esp + 4;
+  
+  esp = esp - 4;
+  *(int *)esp = argc;
+
+  esp = esp - 4;
+  *(int *)esp = 0;
+
+
+  for(iter = 0; iter < argc; iter++){
+    printf("%s ", *(char **)(esp+12+(iter * 4)));
+  }
+  printf("\n");
+  printf("esp data %d %X %X %X %s\n", *(int *)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
+  
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -88,6 +156,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  while(1);
   return -1;
 }
 
