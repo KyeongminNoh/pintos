@@ -121,12 +121,13 @@ start_process (void *file_name_)
   esp = esp - 4;
   *(int *)esp = 0;
 
+  if_.esp = esp;
 
   for(iter = 0; iter < argc; iter++){
     printf("%s ", *(char **)(esp+12+(iter * 4)));
   }
   printf("\n");
-  printf("esp data %d %X %X %X %s\n", *(int *)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
+  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
   
 
   /* If load failed, quit. */
