@@ -189,7 +189,6 @@ thread_create (const char *name, int priority,
   t->pData = (struct process_data*)aux;
   t->pData->t = t;
 
-
   _c->child = t;
   _c->tid = t->tid;
   _c->status = 0;
