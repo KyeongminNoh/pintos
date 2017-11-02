@@ -13,6 +13,7 @@ struct process_data {
   char* cmdline;
   struct thread *t;
   struct semaphore sema_load;
+  bool load_success;
 };
 
 #endif /* userprog/process.h */

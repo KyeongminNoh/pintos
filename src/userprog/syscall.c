@@ -275,19 +275,21 @@ int sys_read(int fd, void *buffer, unsigned size){
 
   if(fd<0 || fd>128)
       sys_exit(-1);
-
-  if(thread_current()->thread_fd[fd] == NULL)
-      return -1;
-
-  if(fd == 0)
-      for(read_size=0; read_size < size; read_size++)
+  
+  if(fd == 0){
+    for(read_size=0; read_size < size; read_size++)
       {
           *((char*)buffer++) = input_getc ();
       }
-  else 
-      {
-        read_size = file_read(thread_current()->thread_fd[fd]->file, buffer, size);
-      } 
+    return read_size;
+  
+  }
+      
+  if(thread_current()->thread_fd[fd] == NULL)
+      return -1;
+
+      
+  read_size = file_read(thread_current()->thread_fd[fd]->file, buffer, size);
   return read_size;
 };
 

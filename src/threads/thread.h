@@ -101,7 +101,7 @@ struct thread
     struct list child_list;
     struct child *self_info;
     struct process_data *pData;
-    bool load_success;
+    //bool load_success;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 

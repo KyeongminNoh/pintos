@@ -32,31 +32,39 @@ process_execute (const char *file_name)
   struct process_data *pd = NULL;
   struct list_elem *e; 
   struct child *cData;
-  char *fn_copy, *arg;
+  char *fn_copy, *cmdline, *arg;
   tid_t tid;
   int i;
 
+  
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
 
+  strlcpy (fn_copy, file_name, PGSIZE);
+  
+  cmdline = palloc_get_page (0);
+  if (cmdline == NULL)
+    return TID_ERROR;
+
+  strlcpy (cmdline, file_name, PGSIZE);
+
+  fn_copy = strtok_r(fn_copy, " ", &arg);
+  
   pd = palloc_get_page(0);
   if (pd == NULL)
     return TID_ERROR;
 
-  pd->cmdline = fn_copy;
+  pd->cmdline = cmdline;
   sema_init(&pd->sema_load, 0);
-
-  file_name = strtok_r(file_name, " ", &arg);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, (void *)pd);
+  tid = thread_create (fn_copy, PRI_DEFAULT, start_process, (void *)pd);
   
   sema_down(&pd->sema_load);
 
-  if(!pd->t->load_success){
+  if(!pd->load_success){
     cData = pd->t->self_info;
     e = &cData->child_elem;
     list_remove(e);
@@ -84,8 +92,8 @@ start_process (void *pd_)
   struct thread *t = thread_current();
   char *token;
   char *remain;
-  char *argv[128];
-  void *addr[128];
+  char *argv[50];
+  void *addr[50];
   void *esp;
   int length = 0;
   int iter = 1;
@@ -94,20 +102,19 @@ start_process (void *pd_)
   struct intr_frame if_;
   bool success;
 
-
   file_name = strtok_r(file_name, " ", &remain);
 
   if(file_name != NULL){
     argv[0] = file_name;
     argc++;
   }
-  
   for(token = strtok_r(NULL, " ", &remain); token != NULL; iter++){
     argv[iter] = token;
     argc++;
     token = strtok_r(NULL, " ", &remain);
   }
 
+  pd->load_success = false;
 
   lock_acquire(&t->self_info->lock_wait);
   /* Initialize interrupt frame and load executable. */
@@ -120,7 +127,7 @@ start_process (void *pd_)
   sema_up(&pd->sema_load);
 
   if(success){
-    t->load_success = true;
+    pd->load_success = true;
 
     esp = if_.esp;
 
@@ -214,7 +221,7 @@ process_wait (tid_t child_tid UNUSED)
       break;
     }
   }
-  
+ 
   return status;
 }
 
