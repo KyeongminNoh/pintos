@@ -8,4 +8,10 @@ int process_wait (tid_t);
 void process_exit (void);
 void process_activate (void);
 
+struct process_data {
+  char* cmdline;
+  struct thread *t;
+  struct semaphore sema_load;
+};
+
 #endif /* userprog/process.h */

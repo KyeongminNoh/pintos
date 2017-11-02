@@ -28,6 +28,9 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
 tid_t
 process_execute (const char *file_name) 
 {
+  struct process_data *pd = NULL;
+  struct list_elem *e; 
+  struct child *cData;
   char *fn_copy, *arg;
   tid_t tid;
 
@@ -38,20 +41,42 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  pd = palloc_get_page(0);
+  if (pd == NULL)
+    return TID_ERROR;
+
+  pd->cmdline = fn_copy;
+  sema_init(&pd->sema_load, 0);
+
   file_name = strtok_r(file_name, " ", &arg);
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  tid = thread_create (file_name, PRI_DEFAULT, start_process, (void *)pd);
+  
+  sema_down(&pd->sema_load);
+
+  if(!pd->t->load_success){
+    cData = pd->t->self_info;
+    e = &cData->child_elem;
+    list_remove(e);
+    free(cData);
+    return TID_ERROR;
+  }
+
+  if (tid == TID_ERROR){
+    palloc_free_page (fn_copy);
+    palloc_free_page (pd);
+  }
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *pd_)
 {
-  char *file_name = file_name_;
+  struct process_data *pd = (struct process_data*)pd_;
+  char *file_name = pd->cmdline;
+  struct thread *t = thread_current();
   char *token;
   char *remain;
   char *argv[128];
@@ -64,14 +89,12 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
-  printf("cmdline: %s\n", file_name);
 
   file_name = strtok_r(file_name, " ", &remain);
 
   if(file_name != NULL){
     argv[0] = file_name;
     argc++;
-    printf("%s executed\n", argv[0]);
   }
   
   for(token = strtok_r(NULL, " ", &remain); token != NULL; iter++){
@@ -80,7 +103,6 @@ start_process (void *file_name_)
     token = strtok_r(NULL, " ", &remain);
   }
 
-  printf("argc %d\n", argc);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -89,45 +111,58 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
 
-  esp = if_.esp;
+  sema_up(&pd->sema_load);
 
-  /* Pushing Argument to Stack */
-  for(iter = argc-1; iter >= 0; iter--){
-    length = strlen(argv[iter]) + 1;
-    esp = esp - length;
-    memcpy ( (void *)esp, argv[iter], length);
-    addr[iter] = esp;
-    printf("addr%d : %X esp: %X\n", iter, (int)(addr[iter]), (int)(esp));
-  }
+  if(success){
+    t->load_success = true;
 
-  esp = (void *)((unsigned int)esp - (unsigned int)esp % 4);
+    esp = if_.esp;
+
+    /* Pushing Argument to Stack */
+    for(iter = argc-1; iter >= 0; iter--){
+      length = strlen(argv[iter]) + 1;
+      esp = esp - length;
+      memcpy ( (void *)esp, argv[iter], length);
+      addr[iter] = esp;
+      //    printf("addr%d : %X esp: %X\n", iter, (int)(addr[iter]), (int)(esp));
+    }
+
+    esp = (void *)((unsigned int)esp - (unsigned int)esp % 4);
 
 
-  esp = esp - 4;
-  *(uint32_t*)esp = 0;
-  
-  for(iter = argc-1; iter >= 0; iter--){
     esp = esp - 4;
-    printf("addr: %X\n", addr[iter]);
-    *(void **)esp = addr[iter];
+    *(uint32_t*)esp = 0;
+
+    for(iter = argc-1; iter >= 0; iter--){
+      esp = esp - 4;
+      //    printf("addr: %X\n", addr[iter]);
+      *(void **)esp = addr[iter];
+    }
+
+    esp = esp - 4;
+    *(void **)esp = esp + 4;
+
+    esp = esp - 4;
+    *(int *)esp = argc;
+
+    esp = esp - 4;
+    *(int *)esp = 0;
+
+    if_.esp = esp;
+ 
+    ///  for(iter = 0; iter < argc; iter++){
+    //    printf("%s ", *(char **)(esp+12+(iter * 4)));
+    //  }
+    //  printf("\n");
+    //  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
+    //  for(iter = 0; iter < argc; iter++){
+      //    printf("%s ", *(char **)(esp+12+(iter * 4)));
+      //  }
+      //  printf("\n");
+      //  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
+
   }
 
-  esp = esp - 4;
-  *(void **)esp = esp + 4;
-  
-  esp = esp - 4;
-  *(int *)esp = argc;
-
-  esp = esp - 4;
-  *(int *)esp = 0;
-
-  if_.esp = esp;
-
-  for(iter = 0; iter < argc; iter++){
-    printf("%s ", *(char **)(esp+12+(iter * 4)));
-  }
-  printf("\n");
-  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
   
 
   /* If load failed, quit. */
@@ -157,7 +192,8 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(1);
+  intr_disable();
+  thread_block();
   return -1;
 }
 
