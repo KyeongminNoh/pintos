@@ -148,7 +148,10 @@ void sys_halt (void){
   return;
 };
 void sys_exit (int status){
-  return;
+  struct thread *t = thread_current();
+  printf("%s: exit(%d)\n", thread_current()->name, status);
+  lock_release(&t->self_info->lock_wait);
+  thread_exit();
 };
 pid_t sys_exec (const char *cmdline){
   return -1;
@@ -175,11 +178,17 @@ unsigned sys_tell(int fd){
   return 0;
 };
 void sys_close(int fd){
-  return;
+   return;
 };
 int sys_read(int fd, void *buffer, unsigned size){
   return -1;
 };
 int sys_write(int fd, const void *buffer, unsigned size){
+  if(fd == 1){
+    putbuf(buffer, size);
+    return size;
+  }
+
+
   return -1;
 };

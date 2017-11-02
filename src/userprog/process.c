@@ -15,6 +15,7 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 
@@ -104,6 +105,7 @@ start_process (void *pd_)
   }
 
 
+  lock_acquire(&t->self_info->lock_wait);
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -155,11 +157,12 @@ start_process (void *pd_)
     //  }
     //  printf("\n");
     //  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
-    //  for(iter = 0; iter < argc; iter++){
-      //    printf("%s ", *(char **)(esp+12+(iter * 4)));
-      //  }
+    //for(iter = 0; iter < argc; iter++){
+      
+    //      printf("%s ", *(char **)(esp+12+(iter * 4)));
+    //}
       //  printf("\n");
-      //  printf("esp data %X %X %X %X %s\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12));
+    //printf("esp data %X %X %X %X %s %X\n", (int)esp, (int)(esp+4), *(void **)(esp+8),(int)*(char **)(esp+12), *(char **)(esp+12), *(char **)(esp+16)+4);
 
   }
 
@@ -192,9 +195,26 @@ start_process (void *pd_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  intr_disable();
-  thread_block();
-  return -1;
+  struct thread *t= thread_current();
+  struct list_elem *e;
+  struct child *cData;
+  int status = -1;
+
+  for ( e = list_begin(&t->child_list); e != list_end(&t->child_list); e= list_next(e)){
+    cData = list_entry(e, struct child, child_elem);
+    printf("after find child\n");
+    if(cData->tid == child_tid ){
+    printf("before lock\n");
+      lock_acquire(&cData->lock_wait);
+      printf("lock part \n");
+      status = cData->status;
+      list_remove(e);
+      free(cData);
+      break;
+    }
+  }
+  
+  return status;
 }
 
 /* Free the current process's resources. */
