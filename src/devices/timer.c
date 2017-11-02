@@ -7,10 +7,8 @@
 #include "threads/interrupt.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
-#include "threads/float.h"
-
+  
 /* See [8254] for hardware details of the 8254 timer chip. */
-// commit test
 
 #if TIMER_FREQ < 19
 #error 8254 timer requires TIMER_FREQ >= 19
@@ -94,10 +92,8 @@ timer_sleep (int64_t ticks)
   int64_t start = timer_ticks ();
 
   ASSERT (intr_get_level () == INTR_ON);
-//  while (timer_elapsed (start) < ticks) 
-//    thread_yield ();
-
-    thread_goto_sleep(start + ticks);
+  while (timer_elapsed (start) < ticks) 
+    thread_yield ();
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -176,26 +172,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-
-  if(thread_mlfqs)
-  {
-   
-    thread_current()->recent_cpu = ADD_INT (thread_current()->recent_cpu, 1);
-
-
-    if(ticks % TIMER_FREQ == 0)
-    {
-        mlfqs_load_avg_change();
-        mlfqs_all_recent_cpu_change();
-    }
-    if(ticks % 4 == 0) {
-        mlfqs_all_priority_change();
-    }
-  
-  }
-
-  if(get_next_tick() <= ticks)
-      thread_goto_ready(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

@@ -170,6 +170,7 @@ thread_create (const char *name, int priority,
   struct kernel_thread_frame *kf;
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
+  struct child *_c;
   tid_t tid;
   enum intr_level old_level;
 
@@ -183,6 +184,18 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  _c = malloc(sizeof(struct child));
+  t->pData = (struct process_data*)aux;
+  t->pData->t = t;
+
+
+  _c->child = t;
+  _c->tid = t->tid;
+  _c->status = 0;
+  lock_init(&_c->lock_wait);
+  t->self_info = _c;
+  list_push_back(&thread_current()->child_list, &_c->child_elem);
 
   /* Prepare thread for first run by initializing its stack.
      Do this atomically so intermediate values for the 'stack' 
@@ -470,6 +483,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+  list_init (&t->child_list);
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

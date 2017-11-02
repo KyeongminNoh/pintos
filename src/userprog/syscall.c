@@ -131,8 +131,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
   f->eax = ret_val;
 
-  printf ("system call! %d\n", syscall_num);
-  thread_exit ();
 }
 
 void * esp_val(void *esp, int n){
@@ -149,6 +147,23 @@ void sys_halt (void){
 };
 void sys_exit (int status){
   struct thread *t = thread_current();
+  struct list_elem *e;
+  struct child *cData;
+  if(t->self_info == NULL){
+    printf("not self info\n");
+    thread_exit();
+  }
+  t->self_info->status = status;
+
+  for (e = list_begin(&t->child_list);e != list_end(&t->child_list);){
+   
+       cData = list_entry (e, struct child, child_elem);
+       sys_wait(cData->tid);
+   
+       e = list_next(e);
+       free(cData);
+  } 
+
   printf("%s: exit(%d)\n", thread_current()->name, status);
   lock_release(&t->self_info->lock_wait);
   thread_exit();
@@ -157,7 +172,7 @@ pid_t sys_exec (const char *cmdline){
   return -1;
 };
 int sys_wait (pid_t pid){
-  return -1;
+  return process_wait(pid);
 };
 bool sys_create(const char* filename, unsigned initial_size){
   return false;

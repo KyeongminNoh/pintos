@@ -67,6 +67,9 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy);
     palloc_free_page (pd);
   }
+  
+  thread_yield();
+
   return tid;
 }
 
@@ -171,7 +174,7 @@ start_process (void *pd_)
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
-    thread_exit ();
+    sys_exit (-1);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -202,11 +205,8 @@ process_wait (tid_t child_tid UNUSED)
 
   for ( e = list_begin(&t->child_list); e != list_end(&t->child_list); e= list_next(e)){
     cData = list_entry(e, struct child, child_elem);
-    printf("after find child\n");
     if(cData->tid == child_tid ){
-    printf("before lock\n");
       lock_acquire(&cData->lock_wait);
-      printf("lock part \n");
       status = cData->status;
       list_remove(e);
       free(cData);
