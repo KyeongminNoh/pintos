@@ -12,6 +12,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/float.h"
+#include "threads/malloc.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -193,6 +194,19 @@ thread_create (const char *name, int priority,
   /* initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+
+  struct child *_c = malloc(sizeof(struct child));
+  t->pData = (struct process_data*)aux;
+  t->pData->t = t;
+  
+
+  _c->child = t;
+  _c->tid = t->tid;
+  _c->status = 0;
+  lock_init(&_c->lock_wait);
+  t->self_info = _c;
+  list_push_back(&thread_current()->child_list, &_c->child_elem);
+  
 
   /* prepare thread for first run by initializing its stack.
      do this atomically so intermediate values for the 'stack' 
@@ -730,6 +744,9 @@ init_thread (struct thread *t, const char *name, int priority)
       }
       mlfqs_priority_change(t);
   }
+
+  /*  User Program  */
+  list_init (&t->child_list);
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

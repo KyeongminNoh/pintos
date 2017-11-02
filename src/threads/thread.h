@@ -5,6 +5,8 @@
 #include <list.h>
 #include <stdint.h>
 
+#include "synch.h"
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -97,6 +99,8 @@ struct thread
     struct thread *parent;
     struct list_elem child_elem;
     struct list child_list;
+    struct child *self_info;
+    struct process_data *pData;
     bool load_success;
 
     /* Shared between thread.c and synch.c. */
@@ -121,6 +125,16 @@ struct thread
     struct thread *receiver;
     struct lock *wait_lock;
   };
+
+struct child
+{
+  struct thread *child;
+  tid_t tid;
+  struct list_elem child_elem;
+  struct lock lock_wait;
+   // bool load_success;
+  int status;
+};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
