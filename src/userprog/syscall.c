@@ -300,13 +300,16 @@ int sys_write(int fd, const void *buffer, unsigned size){
   if(fd<0 || fd>128)
     sys_exit(-1);
 
+  if (fd == 1){
+    putbuf(buffer, size);
+    return size;
+  }
+
+
   if(thread_current()->thread_fd[fd] == NULL)
     return -1;
 
-  if (fd == 1)
-    putbuf(buffer, size);
-  else
-    write_size = file_write(thread_current()->thread_fd[fd]->file, buffer, size);
+  write_size = file_write(thread_current()->thread_fd[fd]->file, buffer, size);
    
   return write_size;
 };
