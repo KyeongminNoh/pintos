@@ -34,6 +34,7 @@ process_execute (const char *file_name)
   struct child *cData;
   char *fn_copy, *arg;
   tid_t tid;
+  int i;
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */

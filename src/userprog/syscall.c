@@ -5,6 +5,9 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
+#include "devices/shutdown.h"
+#include "threads/malloc.h"
+#include "filesys/off_t.h"
 
 typedef int pid_t;
 
@@ -143,12 +146,13 @@ bool check_user_mem(void *esp, int n){
 
 /* Implement System Call functions */
 void sys_halt (void){
-  return;
+   shutdown_power_off();
 };
 void sys_exit (int status){
   struct thread *t = thread_current();
   struct list_elem *e;
   struct child *cData;
+  int i;
   if(t->self_info == NULL){
     printf("not self info\n");
     thread_exit();
@@ -163,47 +167,146 @@ void sys_exit (int status){
        e = list_next(e);
        free(cData);
   } 
+  for(i=2;i<128;i++)
+  {
+    free(t->thread_fd[i]);
+  }
 
   printf("%s: exit(%d)\n", thread_current()->name, status);
   lock_release(&t->self_info->lock_wait);
   thread_exit();
 };
 pid_t sys_exec (const char *cmdline){
-  return -1;
+    
+    pid_t pid;
+
+    if(cmdline == NULL)
+      return -1;
+    pid = process_execute (cmdline);
+    return pid;
 };
 int sys_wait (pid_t pid){
   return process_wait(pid);
 };
 bool sys_create(const char* filename, unsigned initial_size){
-  return false;
+
+    if(filename == NULL)
+        sys_exit(-1);
+
+    return filesys_create(filename, initial_size);
 };
 bool sys_remove(const char* filename){
-  return false;
+    
+    if(filename == NULL)
+        sys_exit(-1);
+    
+    return filesys_remove(filename);
 };
 int sys_open(const char* file){
-  return -1;
+
+    struct thread_fd* fd;
+    struct thread *cur = thread_current();
+    int i;
+
+    if(file == NULL)
+        sys_exit(-1);
+    
+    fd = calloc(1, sizeof(struct thread_fd)); 
+    fd->file = filesys_open (file);//open
+    
+    if(fd->file == NULL)
+    {
+        free(fd);
+        return -1;
+    }
+    for(i=2;i<128;i++)
+    {
+        if(cur->thread_fd[i] == NULL)
+            break;
+    }//find empty fd
+    
+    if(i == 128)//full
+    return -1;
+    
+    fd->fd = i;
+    cur->thread_fd[i] = fd;
+    
+    return i;
 };
 int sys_filesize(int fd){
-  return -1;
+
+    struct file * file ;
+    struct thread * cur = thread_current();
+    
+    if(cur->thread_fd[fd] == NULL)
+        return -1;
+
+    file = cur->thread_fd[fd]->file;
+    return file_length(file);
 };
 void sys_seek(int fd, unsigned position){
-  return -1;
+  
+    struct thread *cur = thread_current();
+    file_seek(cur->thread_fd[fd]->file, (off_t)position);//find page with filename, position 
 };
 unsigned sys_tell(int fd){
-  return 0;
+  
+    struct thread * cur = thread_current();
+    return file_tell(cur->thread_fd[fd]->file);  
 };
 void sys_close(int fd){
-   return;
+   struct thread * cur = thread_current();
+    
+    if(fd>128 || fd<2)
+       sys_exit(-1);
+    
+   if(cur->thread_fd[fd] == NULL)
+       return;
+
+   //file_close(cur->pData->[fd]->file);
+   // free(t->file_des[fd]);
+   //t->file_des[fd] = NULL;
 };
 int sys_read(int fd, void *buffer, unsigned size){
-  return -1;
+  int read_size = 0;
+  
+  if(!(buffer < PHYS_BASE) || !((buffer+size-1) < PHYS_BASE))
+      sys_exit(-1);
+
+  if(fd<0 || fd>128)
+      sys_exit(-1);
+
+  if(thread_current()->thread_fd[fd] == NULL)
+      return -1;
+
+  if(fd == 0)
+      for(read_size=0; read_size < size; read_size++)
+      {
+          *((char*)buffer++) = input_getc ();
+      }
+  else 
+      {
+        read_size = file_read(thread_current()->thread_fd[fd]->file, buffer, size);
+      } 
+  return read_size;
 };
+
 int sys_write(int fd, const void *buffer, unsigned size){
-  if(fd == 1){
+  int write_size =0;
+  
+  if(!(buffer < PHYS_BASE) || !((buffer+size-1) < PHYS_BASE))
+    sys_exit(-1);
+
+  if(fd<0 || fd>128)
+    sys_exit(-1);
+
+  if(thread_current()->thread_fd[fd] == NULL)
+    return -1;
+
+  if (fd == 1)
     putbuf(buffer, size);
-    return size;
-  }
-
-
-  return -1;
+  else
+    write_size = file_write(thread_current()->thread_fd[fd]->file, buffer, size);
+   
+  return write_size;
 };

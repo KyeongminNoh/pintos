@@ -15,6 +15,11 @@ enum thread_status
     THREAD_DYING        /* About to be destroyed. */
   };
 
+struct thread_fd{
+  struct file* file;
+  int fd;
+};
+
 /* Thread identifier type.
    You can redefine this to whatever type you like. */
 typedef int tid_t;
@@ -100,6 +105,8 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    struct thread_fd* thread_fd[128];
+    
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
