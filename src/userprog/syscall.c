@@ -215,7 +215,6 @@ int sys_open(const char* file){
 
 
     fd->file = filesys_open (file);//open
-    file_deny_write(file);
 
     if(fd->file == NULL)
     {
@@ -266,10 +265,9 @@ void sys_close(int fd){
    if(cur->thread_fd[fd] == NULL)
        return;
     
-   file_allow_write(cur->thread_fd[fd]->file);
    file_close(cur->thread_fd[fd]->file);
-   free(t->file_des[fd]);
-   t->file_des[fd] = NULL;
+   free(cur->thread_fd[fd]);
+   cur->thread_fd[fd] = NULL;
 };
 int sys_read(int fd, void *buffer, unsigned size){
   int read_size = 0;
