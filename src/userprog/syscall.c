@@ -212,8 +212,11 @@ int sys_open(const char* file){
         sys_exit(-1);
     
     fd = calloc(1, sizeof(struct thread_fd)); 
+
+
     fd->file = filesys_open (file);//open
-    
+    file_deny_write(file);
+
     if(fd->file == NULL)
     {
         free(fd);
@@ -262,10 +265,11 @@ void sys_close(int fd){
     
    if(cur->thread_fd[fd] == NULL)
        return;
-
-   //file_close(cur->pData->[fd]->file);
-   // free(t->file_des[fd]);
-   //t->file_des[fd] = NULL;
+    
+   file_allow_write(cur->thread_fd[fd]->file);
+   file_close(cur->thread_fd[fd]->file);
+   free(t->file_des[fd]);
+   t->file_des[fd] = NULL;
 };
 int sys_read(int fd, void *buffer, unsigned size){
   int read_size = 0;
