@@ -5,8 +5,6 @@
 #include <list.h>
 #include <stdint.h>
 
-#include "synch.h"
-
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -25,7 +23,6 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
-#define FP 1<<14
 
 /* A kernel thread or user process.
 
@@ -91,17 +88,7 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-    int waketime;                       /*save the wakeup timming*/
-    int nice; 
-    int recent_cpu;
     struct list_elem allelem;           /* List element for all threads list. */
-
-    struct thread *parent;
-    struct list_elem child_elem;
-    struct list child_list;
-    struct child *self_info;
-    struct process_data *pData;
-    bool load_success;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
@@ -113,28 +100,7 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-
-    /* Writed by User */
-    struct list_elem donelem;
-
-    int origin_priority;                /* Prirority before priority donation */
-    int donated_level;
-    int priority_after;
-    bool is_donating;
-    struct list donators;
-    struct thread *receiver;
-    struct lock *wait_lock;
   };
-
-struct child
-{
-  struct thread *child;
-  tid_t tid;
-  struct list_elem child_elem;
-  struct lock lock_wait;
-   // bool load_success;
-  int status;
-};
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -159,30 +125,6 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
-
-/***** custom function for solving project 1 *****/
-
-/* function for alarm clock */
-void next_wakeup_compare(int);
-int get_next_tick(void);
-void thread_goto_sleep(int);
-void thread_goto_ready(int);
-
-/* function for priority scheduling */
-bool compare_thread_priority(struct list_elem *e1, struct list_elem *e2, void *UNUSED);
-void priority_yield(void);
-void ready_list_sort(void);
-
-/* function for advanced scheduling */
-void mlfqs_priority_change(struct thread *t);
-void mlfqs_all_priority_change(void);
-void mlfqs_recent_cpu_change(struct thread *t);
-void mlfqs_all_recent_cpu_change(void);
-void mlfqs_load_avg_change(void);
-void test_max_priority(void);
-void maxpriority_check(void);
-
-/*---------------------------------------*/
 
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
