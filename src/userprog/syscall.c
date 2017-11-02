@@ -169,7 +169,8 @@ void sys_exit (int status){
   thread_exit();
 };
 pid_t sys_exec (const char *cmdline){
-  return -1;
+   pid_t pid = process_execute(cmdline);
+   return pid;
 };
 int sys_wait (pid_t pid){
   return process_wait(pid);
