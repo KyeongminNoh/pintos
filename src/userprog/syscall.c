@@ -8,6 +8,7 @@
 #include "devices/shutdown.h"
 #include "threads/malloc.h"
 #include "filesys/off_t.h"
+#include <string.h>
 
 typedef int pid_t;
 
@@ -232,7 +233,9 @@ int sys_open(const char* file){
     
     fd->fd = i;
     cur->thread_fd[i] = fd;
-    
+
+    if (strcmp (file, cur->name) == 0)
+        file_deny_write(fd->file);
     return i;
 };
 int sys_filesize(int fd){
@@ -264,7 +267,8 @@ void sys_close(int fd){
     
    if(cur->thread_fd[fd] == NULL)
        return;
-    
+
+   file_allow_write(cur->thread_fd[fd]->file);
    file_close(cur->thread_fd[fd]->file);
    free(cur->thread_fd[fd]);
    cur->thread_fd[fd] = NULL;
